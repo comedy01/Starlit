@@ -1,0 +1,397 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
+	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}" apply false
+	id 'net.neoforged.moddev' version "${moddev_version}" apply false
+	id 'net.neoforged.moddev.legacyforge' version "${moddev_version}" apply false
+}
+
+def loader = project.property("loader")
+def minecraftVersion = project.minecraft_version
+def fabric = loader == "fabric"
+def neoforge = loader == "neoforge"
+def forge = loader == "forge"
+def remap = fabric && minecraftVersion.startsWith("1.")
+
+def versionProps = new Properties()
+def propsFile = fabric ? file("versions/${minecraftVersion}.properties") : file("versions/${loader}/${minecraftVersion}.properties")
+propsFile.withInputStream { versionProps.load(it) }
+
+def gameVersion = versionProps.getProperty("minecraft", minecraftVersion)
+def packs = versionProps.getProperty("packs").split(",")
+def label = versionProps.getProperty("label")
+def javaVersion = versionProps.getProperty("java").toInteger()
+def selftestArgs = ["--width", "1920", "--height", "1080", "--username", "Starlit"]
+def selftestJvm = ["-Xmx2G"] + project.properties.findAll { it.key.startsWith("sl.") }.collect { "-Dstarlit.${it.key.substring(3)}=${it.value}" }
+
+def expansions = [java_version: javaVersion, fabric_loader_min: ">=0.19.3", fabric_rendering_min: "*"]
+versionProps.stringPropertyNames().each { expansions[it] = versionProps.getProperty(it) }
+
+if (neoforge) {
+	apply plugin: 'net.neoforged.moddev'
+} else if (forge) {
+	apply plugin: 'net.neoforged.moddev.legacyforge'
+} else {
+	apply plugin: remap ? 'net.fabricmc.fabric-loom-remap' : 'net.fabricmc.fabric-loom'
+}
+
+version = "${project.mod_version}+mc${label}"
+expansions.version = project.version
+group = project.maven_group
+
+base {
+	archivesName = fabric ? project.archives_base_name : "${project.archives_base_name}-${loader}"
+}
+
+sourceSets.main.java.srcDir "src/loader/${loader}/java"
+sourceSets.main.resources.srcDir "src/loader/${loader}/resources"
+packs.each { pack ->
+	sourceSets.main.java.srcDir "src/compat/${pack}/java"
+}
+def mainExcludes = versionProps.getProperty("main_excludes", "").split(",").findAll { it }
+if (mainExcludes) {
+	sourceSets.main.java.exclude { element -> mainExcludes.any { element.file.absolutePath.replace(File.separator, "/").endsWith("src/main/java/" + it) } }
+}
+def joml = versionProps.getProperty("joml_version")
+
+def shaderStyle = versionProps.getProperty("shaders", "renderpearl")
+def shaderJson = versionProps.getProperty("shader_json", "none")
+def shaderHeaders = [
+	renderpearl: [
+		vertex: "#version 330\n#extension GL_ARB_separate_shader_objects : require\n#define IN(n) layout(location = n) in\n#define OUT(n) layout(location = n) out\n#include <minecraft:dynamictransforms.glsl>\n#include <minecraft:projection.glsl>",
+		fragment: "#version 330\n#extension GL_ARB_separate_shader_objects : require\n#define IN(n) layout(location = n) in\n#define OUT(n) layout(location = n) out\n#include <minecraft:dynamictransforms.glsl>"
+	],
+	moj: [
+		vertex: "#version 150\n#define IN(n) in\n#define OUT(n) out\n#moj_import <minecraft:dynamictransforms.glsl>\n#moj_import <minecraft:projection.glsl>",
+		fragment: "#version 150\n#define IN(n) in\n#define OUT(n) out\n#moj_import <minecraft:dynamictransforms.glsl>"
+	],
+	uniform: [
+		vertex: "#version 150\n#define IN(n) in\n#define OUT(n) out\nuniform mat4 ModelViewMat;\nuniform mat4 ProjMat;\nuniform vec4 ColorModulator;\nuniform mat4 TextureMat;",
+		fragment: "#version 150\n#define IN(n) in\n#define OUT(n) out\nuniform vec4 ColorModulator;\nuniform mat4 TextureMat;"
+	]
+]
+def generatedShaders = layout.buildDirectory.dir("generated/starlit-shaders/${shaderStyle}-${shaderJson}")
+def generateShaders = tasks.register("generateShaders") {
+	def source = file("src/shaders")
+	def headers = shaderHeaders[shaderStyle]
+	inputs.dir(source)
+	inputs.property("style", shaderStyle)
+	inputs.property("json", shaderJson)
+	outputs.dir(generatedShaders)
+	doLast {
+		def target = generatedShaders.get().dir("assets/starlit/shaders/core").asFile
+		target.deleteDir()
+		target.mkdirs()
+		def noise = new File(source, "noise.glsl").getText("UTF-8")
+		def far = new File(source, "far.glsl").getText("UTF-8")
+		source.listFiles().findAll { it.name.endsWith(".vsh") || it.name.endsWith(".fsh") }.each { shader ->
+			def text = shader.getText("UTF-8")
+				.replace("STARLIT_VERTEX_HEADER", headers.vertex)
+				.replace("STARLIT_FRAGMENT_HEADER", headers.fragment)
+				.replace("STARLIT_NOISE", noise)
+				.replace("STARLIT_FAR", far)
+			new File(target, shader.name).setText(text, "UTF-8")
+		}
+		if (shaderJson != "none") {
+			def identity = "[1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]"
+			def blends = [
+				ADDITIVE: '{"func": "add", "srcrgb": "1", "dstrgb": "1"}',
+				MULTIPLY: '{"func": "add", "srcrgb": "dstcolor", "dstrgb": "0"}',
+				TRANSLUCENT: '{"func": "add", "srcrgb": "srcalpha", "dstrgb": "1-srcalpha"}',
+				PREMULTIPLIED: '{"func": "add", "srcrgb": "1", "dstrgb": "1-srcalpha"}'
+			]
+			new File(source, "programs.txt").readLines().findAll { it.trim() }.each { line ->
+				def (name, vertex, fragment, textured, blend) = line.trim().split(/\s+/)
+				def legacy = shaderJson == "legacy"
+				def prefix = legacy ? "starlit:" : "starlit:core/"
+				def attributes = textured == "true" ? '"Position", "UV0", "Color"' : '"Position"'
+				def json = "{\n" +
+					(legacy ? "\t\"blend\": ${blends[blend]},\n" : "") +
+					"\t\"vertex\": \"${prefix}${vertex}\",\n" +
+					"\t\"fragment\": \"${prefix}${fragment}\",\n" +
+					(legacy ? "\t\"attributes\": [${attributes}],\n" : "") +
+					"\t\"samplers\": [],\n" +
+					"\t\"uniforms\": [\n" +
+					"\t\t{\"name\": \"ModelViewMat\", \"type\": \"matrix4x4\", \"count\": 16, \"values\": ${identity}},\n" +
+					"\t\t{\"name\": \"ProjMat\", \"type\": \"matrix4x4\", \"count\": 16, \"values\": ${identity}},\n" +
+					"\t\t{\"name\": \"ColorModulator\", \"type\": \"float\", \"count\": 4, \"values\": [1.0, 1.0, 1.0, 1.0]},\n" +
+					"\t\t{\"name\": \"TextureMat\", \"type\": \"matrix4x4\", \"count\": 16, \"values\": ${identity}}\n" +
+					"\t]\n}\n"
+				new File(target, "${name}.json").setText(json, "UTF-8")
+			}
+		}
+	}
+}
+sourceSets.main.resources.srcDir(files(generatedShaders).builtBy(generateShaders))
+packs.each { pack ->
+	sourceSets.main.resources.srcDir "src/compat/${pack}/resources"
+}
+
+sourceSets {
+	selftest {
+		java.srcDir "src/selftest/${loader}/java"
+		resources.srcDir "src/selftest/${loader}/resources"
+		packs.each { pack ->
+			java.srcDir "src/compat/${pack}/selftest/java"
+		}
+	}
+}
+
+repositories {
+	maven {
+		name = "Terraformers"
+		url = "https://maven.terraformersmc.com/"
+	}
+}
+
+dependencies {
+	if (neoforge || forge) {
+		testImplementation "com.google.code.gson:gson:2.11.0"
+		testImplementation "org.slf4j:slf4j-api:2.0.16"
+	}
+	if (forge) {
+		annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
+		compileOnly "io.github.llamalad7:mixinextras-common:${versionProps.getProperty('mixinextras_version')}"
+		annotationProcessor "io.github.llamalad7:mixinextras-common:${versionProps.getProperty('mixinextras_version')}"
+		implementation "io.github.llamalad7:mixinextras-forge:${versionProps.getProperty('mixinextras_version')}"
+		jarJar "io.github.llamalad7:mixinextras-forge:${versionProps.getProperty('mixinextras_version')}"
+	} else if (remap) {
+		minecraft "com.mojang:minecraft:${gameVersion}"
+		mappings loom.officialMojangMappings()
+		modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+		modImplementation "net.fabricmc.fabric-api:fabric-api:${versionProps.getProperty('fabric_api_version')}"
+		modCompileOnly("com.terraformersmc:modmenu:${versionProps.getProperty('modmenu_version')}") {
+			transitive = false
+		}
+	} else if (fabric) {
+		minecraft "com.mojang:minecraft:${gameVersion}"
+		implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+		implementation "net.fabricmc.fabric-api:fabric-api:${versionProps.getProperty('fabric_api_version')}"
+		compileOnly "com.terraformersmc:modmenu:${versionProps.getProperty('modmenu_version')}"
+		if (project.hasProperty("modmenu")) {
+			localRuntime "com.terraformersmc:modmenu:${versionProps.getProperty('modmenu_version')}"
+		}
+	}
+
+	if (joml != null) {
+		implementation "org.joml:joml:${joml}"
+		if (forge) {
+			jarJar "org.joml:joml:${joml}"
+		} else {
+			include "org.joml:joml:${joml}"
+		}
+	}
+
+	testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+if (neoforge) {
+	dependencies {
+		selftestImplementation sourceSets.main.output
+	}
+
+	neoForge {
+		version = versionProps.getProperty("neoforge_version")
+		addModdingDependenciesTo(sourceSets.selftest)
+		mods {
+			starlit {
+				sourceSet sourceSets.main
+			}
+			starlit_selftest {
+				sourceSet sourceSets.selftest
+			}
+		}
+		runs {
+			client {
+				client()
+				loadedMods = [mods.starlit]
+			}
+			selftest {
+				client()
+				sourceSet = sourceSets.selftest
+				loadedMods = [mods.starlit, mods.starlit_selftest]
+				programArguments.addAll(selftestArgs)
+				jvmArguments.addAll(selftestJvm)
+			}
+		}
+	}
+} else if (forge) {
+	dependencies {
+		selftestImplementation sourceSets.main.output
+		selftestRuntimeOnly "io.github.llamalad7:mixinextras-forge:${versionProps.getProperty('mixinextras_version')}"
+	}
+
+	legacyForge {
+		version = versionProps.getProperty("forge_version")
+		addModdingDependenciesTo(sourceSets.selftest)
+		mods {
+			starlit {
+				sourceSet sourceSets.main
+			}
+			starlit_selftest {
+				sourceSet sourceSets.selftest
+			}
+		}
+		runs {
+			client {
+				client()
+				loadedMods = [mods.starlit]
+			}
+			selftest {
+				client()
+				sourceSet = sourceSets.selftest
+				loadedMods = [mods.starlit, mods.starlit_selftest]
+				programArguments.addAll(selftestArgs)
+				programArguments.addAll("--mixin.config", "starlit_selftest.mixins.json")
+				jvmArguments.addAll(selftestJvm)
+			}
+		}
+	}
+
+	mixin {
+		add sourceSets.main, "starlit.refmap.json"
+		config "starlit.mixins.json"
+	}
+
+	if (joml != null) {
+		dependencies {
+			additionalRuntimeClasspath "org.joml:joml:${joml}"
+		}
+	}
+
+	jar {
+		manifest.attributes("MixinConfigs": "starlit.mixins.json")
+	}
+} else {
+	sourceSets.selftest.compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+	sourceSets.selftest.runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+
+	loom {
+		mods {
+			starlit {
+				sourceSet sourceSets.main
+			}
+			starlit_selftest {
+				sourceSet sourceSets.selftest
+			}
+		}
+		runs {
+			selftest {
+				client()
+				source sourceSets.selftest
+				programArgs selftestArgs
+				vmArgs selftestJvm
+			}
+		}
+	}
+}
+
+if (fabric && !remap && project.findProperty("sl.showcase") != null) {
+	sourceSets {
+		showcase
+	}
+	sourceSets.showcase.compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+	sourceSets.showcase.runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+
+	loom {
+		mods {
+			starlit_showcase {
+				sourceSet sourceSets.showcase
+			}
+		}
+		runs {
+			showcase {
+				client()
+				source sourceSets.showcase
+				programArgs selftestArgs
+				vmArgs selftestJvm
+			}
+		}
+	}
+}
+
+test {
+	useJUnitPlatform()
+}
+
+processResources {
+	inputs.properties(expansions)
+
+	filesMatching(["fabric.mod.json", "starlit.mixins.json", "META-INF/neoforge.mods.toml", "META-INF/mods.toml"] + (forge ? ["pack.mcmeta"] : [])) {
+		expand expansions
+	}
+	if (forge) {
+		filesMatching("starlit.mixins.json") {
+			filter { line -> line.contains('"package"') ? line + '\n\t"refmap": "starlit.refmap.json",' : line }
+		}
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = javaVersion
+	it.options.encoding = 'UTF-8'
+}
+
+java {
+	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.toVersion(javaVersion)
+	targetCompatibility = JavaVersion.toVersion(javaVersion)
+
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(javaVersion)
+	}
+}
+
+jar {
+	inputs.property "archivesName", project.base.archivesName
+
+	from("LICENSE") {
+		rename { "${it}_${project.base.archivesName.get()}" }
+	}
+}
+
+if (remap) {
+	def selftestJar = tasks.register("selftestJar", Jar) {
+		from sourceSets.selftest.output
+		archiveClassifier = "selftest-dev"
+	}
+	tasks.register("remapSelftestJar", net.fabricmc.loom.task.RemapJarTask) {
+		inputFile = selftestJar.flatMap { it.archiveFile }
+		archiveClassifier = "selftest"
+		addNestedDependencies = false
+	}
+}
+
+if (forge && project.hasProperty("prodselftest")) {
+	mixin {
+		add sourceSets.selftest, "starlit_selftest.refmap.json"
+	}
+	dependencies {
+		selftestAnnotationProcessor "org.spongepowered:mixin:0.8.5:processor"
+	}
+	def selftestJar = tasks.register("selftestJar", Jar) {
+		from sourceSets.selftest.output
+		archiveClassifier = "selftest-dev"
+		manifest.attributes("MixinConfigs": "starlit_selftest.mixins.json")
+	}
+	["selftestRuntimeElements", "selftestApiElements"].each { name ->
+		configurations.create(name) {
+			canBeConsumed = true
+			canBeResolved = false
+		}
+	}
+	obfuscation.reobfuscate(selftestJar, sourceSets.selftest)
+	processSelftestResources {
+		filesMatching("starlit_selftest.mixins.json") {
+			filter { line -> line.contains('"package"') ? line + '\n\t"refmap": "starlit_selftest.refmap.json",' : line }
+		}
+	}
+}
+
+if (!remap && !forge) {
+	tasks.register("selftestJar", Jar) {
+		from sourceSets.selftest.output
+		archiveClassifier = "selftest"
+	}
+}

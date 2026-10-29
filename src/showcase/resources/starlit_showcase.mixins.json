@@ -1,0 +1,15 @@
+{
+	"required": true,
+	"minVersion": "0.8",
+	"package": "dev.starlit.showcase.mixin",
+	"compatibilityLevel": "JAVA_17",
+	"client": [
+		"HudHideMixin",
+		"MinecraftFrameMixin",
+		"MouseHandlerAccessor",
+		"ScreenCursorMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

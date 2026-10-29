@@ -1,0 +1,43 @@
+{
+	"schemaVersion": 1,
+	"id": "starlit",
+	"version": "${version}",
+	"name": "Starlit",
+	"description": "A living sky: thousands of colored, twinkling stars, the Milky Way, nebulae, galaxies, planets, shooting stars, meteor showers, comets, auroras, hidden Minecraft constellations, rich sunsets, halos, rainbows and birds. Client-side only.",
+	"icon": {
+		"16": "assets/starlit/icon16.png",
+		"32": "assets/starlit/icon32.png",
+		"128": "assets/starlit/icon128.png"
+	},
+	"authors": [
+		"comedy01"
+	],
+	"license": "MIT",
+	"contact": {
+		"homepage": "https://github.com/comedy01/Starlit",
+		"sources": "https://github.com/comedy01/Starlit",
+		"issues": "https://github.com/comedy01/Starlit/issues"
+	},
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"dev.starlit.fabric.StarlitFabric"
+		],
+		"modmenu": [
+			"dev.starlit.fabric.StarlitModMenu"
+		]
+	},
+	"mixins": [
+		"starlit.mixins.json"
+	],
+	"depends": {
+		"fabricloader": "${fabric_loader_min}",
+		"minecraft": "${range}",
+		"java": ">=${java_version}",
+		"${key_module}": "*",
+		"fabric-rendering-v1": "${fabric_rendering_min}"
+	},
+	"suggests": {
+		"modmenu": "*"
+	}
+}

@@ -1,0 +1,20 @@
+{
+	"schemaVersion": 1,
+	"id": "starlit-showcase",
+	"version": "1.0.0",
+	"name": "Starlit showcase",
+	"description": "Development-only film director for Starlit's gallery video. Not shipped.",
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"dev.starlit.showcase.StarlitShowcaseFabric"
+		]
+	},
+	"depends": {
+		"starlit": "*"
+	},
+	"mixins": [
+		"starlit_showcase.mixins.json"
+	]
+}

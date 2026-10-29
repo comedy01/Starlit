@@ -1,0 +1,12 @@
+{
+	"required": true,
+	"minVersion": "0.8",
+	"package": "dev.starlit.selftest.mixin",
+	"compatibilityLevel": "JAVA_17",
+	"client": [
+		"MinecraftFrameMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

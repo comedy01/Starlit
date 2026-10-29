@@ -1,0 +1,27 @@
+modLoader="javafml"
+loaderVersion="${loader_range}"
+license="MIT"
+issueTrackerURL="https://github.com/comedy01/Starlit/issues"
+
+[[mods]]
+modId="starlit"
+version="${version}"
+displayName="Starlit"
+displayURL="https://github.com/comedy01/Starlit"
+logoFile="assets/starlit/icon128.png"
+authors="comedy01"
+description='''A living sky: thousands of colored, twinkling stars, the Milky Way, nebulae, galaxies, planets, shooting stars, meteor showers, comets, auroras, hidden Minecraft constellations, rich sunsets, halos, rainbows and birds. Client-side only.'''
+
+[[dependencies.starlit]]
+modId="forge"
+mandatory=true
+versionRange="${forge_range}"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.starlit]]
+modId="minecraft"
+mandatory=true
+versionRange="${mc_range}"
+ordering="NONE"
+side="CLIENT"
