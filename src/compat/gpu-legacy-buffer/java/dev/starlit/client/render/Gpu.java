@@ -75,7 +75,6 @@ public final class Gpu {
         target.bindWrite(true);
         RenderSystem.enableDepthTest();
         RenderSystem.depthFunc(GL_LEQUAL);
-        // Shader packs leave sky pixels at the cleared depth 1.0; pin every overlay fragment there so it only lands on sky.
         GL11.glDepthRange(1.0, 1.0);
         overlayProjection = (Matrix4f) projection;
         return target;

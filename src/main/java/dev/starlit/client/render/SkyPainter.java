@@ -122,7 +122,6 @@ public final class SkyPainter {
         return config.enabled() && (GpuPipeline.overlay || !Compat.shaderPackInUse());
     }
 
-    // With a shader pack the sky hooks only record; overlay() draws after the pack has composited the frame.
     private static boolean deferred() {
         StarlitConfig config = StarlitClient.config();
         return config.enabled() && !GpuPipeline.overlay && config.shaderMode() != StarlitConfig.ShaderMode.OFF
@@ -139,7 +138,6 @@ public final class SkyPainter {
     private static float[] saved;
     private static boolean savedEnd;
     private static Object savedProjection;
-    // Set whenever a sky hook ran this frame; a modded dimension whose own renderer skipped them gets the fallback.
     private static boolean hooked;
     private static boolean forceReplace;
     public static int fallbacks;
@@ -153,7 +151,6 @@ public final class SkyPainter {
             fallbackSky();
             return;
         }
-        // OptiFine shader packs clear color and depth in their final pass; OptiFineShadersMixin draws after it instead.
         if (!Compat.optifineShaders()) {
             drawOverlay();
         }
@@ -186,7 +183,6 @@ public final class SkyPainter {
         }
     }
 
-    // Draws the whole Starlit sky over a modded dimension's custom sky, with the angles vanilla would have used.
     private static void fallbackSky() {
         StarlitConfig config = StarlitClient.config();
         Minecraft mc = Minecraft.getInstance();
@@ -221,7 +217,6 @@ public final class SkyPainter {
         } finally {
             GpuPipeline.overlay = false;
             forceReplace = false;
-            // Our own beforeCelestials set it; leaving it would skip the fallback every other frame.
             hooked = false;
             Gpu.endOverlay(pass);
         }
@@ -378,7 +373,6 @@ public final class SkyPainter {
         }
     }
 
-    // REPLACE mode: paint over the shader pack's sky (it sits at far depth) with our own backdrop, sun and moon.
     private static void replaceSky(Object pass, StarlitConfig config, float[] sun, float sunAngle, float moonAngle,
                                    int moonPhase, float rainBrightness) {
         ensureShapes();

@@ -779,7 +779,6 @@ public final class StarlitSelfTest {
         });
     }
 
-    // Distant Horizons under an Iris shader pack: the LOD terrain past the render distance must hide Starlit's sky.
     private void planDh(Minecraft mc, StarlitConfig config) {
         then(20, () -> {
             run(mc, "tp @p 0.5 -30 0.5 0 8");
@@ -797,7 +796,6 @@ public final class StarlitSelfTest {
         then(40, () -> shoot(mc, "dh-replace"));
     }
 
-    // A modded dimension with its own sky renderer: Starlit's fallback must draw over it, and stop when toggled off.
     private void planDimension(Minecraft mc, StarlitConfig config) {
         String dim = System.getProperty("starlit.dim", "twilightforest:twilight_forest");
         then(20, () -> run(mc, "execute in " + dim + " run tp @p 0.5 200 0.5 180 -55"));
@@ -814,7 +812,6 @@ public final class StarlitSelfTest {
             log("fallback draws: " + SkyPainter.fallbacks + ", star draws: " + SkyPainter.draws(Layer.STARS));
             check(!mc.level.dimension().toString().contains("minecraft:overworld"), "the player never left the overworld");
             check(SkyPainter.fallbacks > 0, "the modded-dimension fallback never drew");
-            // Every frame must get the fallback; skipping some shows the dimension's own sky through (flicker).
             int drawn = SkyPainter.fallbacks - start[0];
             int frames = SkyPainter.overlays - start[1];
             log("fallback frames: " + drawn + "/" + frames);

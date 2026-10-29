@@ -7,9 +7,6 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
-// Far-terrain mods (Distant Horizons, Voxy) under a shader pack draw LODs into their own depth texture, so the main depth
-// buffer still reads "sky" there. Before the overlay draws, this stamps that terrain into the main depth buffer's sky
-// pixels, just short of the far plane, so the overlay's far-plane test rejects it and real terrain depth is untouched.
 public final class DhMask {
     private static final String VERTEX = """
             #version 150
@@ -46,7 +43,6 @@ public final class DhMask {
     private DhMask() {
     }
 
-    // 26.x (unobfuscated) GpuTexture packs: reach GlTexture.glId() by name. Obfuscated 1.21.x packs call glId() directly.
     public static void apply(Object depthTexture, float maskDepth) {
         if (broken || depthTexture == null || dev.starlit.client.Compat.farDepthTexture() <= 0) {
             return;
@@ -83,7 +79,6 @@ public final class DhMask {
         }
     }
 
-    // OptiFine shader packs clear the main depth buffer in their final pass; rebuild it from the pack's depthtex0 (sky = 1).
     public static void restore(int mainDepth, int shaderDepth) {
         if (broken || mainDepth <= 0 || shaderDepth <= 0) {
             return;
@@ -140,7 +135,6 @@ public final class DhMask {
         return s;
     }
 
-    // maskDepth is where the overlay pins its own depth: 0 for normal Z (main sky at 1), 1 for reversed Z (main sky at 0).
     private static void draw(int depthTexture, int farDepth, float farSky, float maskDepth, boolean clear) {
         int prevProgram = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         int prevVao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);

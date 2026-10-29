@@ -31,8 +31,6 @@ public final class ShaderSetup {
         });
     }
 
-    // OptiFine sets ShaderInstance.name after Fabric API rewrites the namespaced program id, so FabricShaderProgram
-    // throws an NPE. Load them as plain vanilla shaders ("starlit_<name>") and redirect the program JSON to our namespace.
     private static void loadVanilla() {
         for (ShaderInstance shader : OWNED) {
             shader.close();
@@ -55,7 +53,6 @@ public final class ShaderSetup {
         String path = location.getPath();
         int colon = path.indexOf(':');
         if (colon >= 0) {
-            // Fabric API and OptiFine both move the stage namespace to the front: starlit:starlit:shaders/core/x.vsh
             return ResourceLocation.tryParse(path);
         }
         if (location.getNamespace().equals("minecraft") && path.startsWith(PREFIX)) {

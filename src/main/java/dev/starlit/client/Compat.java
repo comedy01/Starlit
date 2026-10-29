@@ -37,7 +37,6 @@ public final class Compat {
         return irisShaders() || optifineShaders();
     }
 
-    // OptiFine (via OptiFabric on Fabric) keeps its shader state in static fields on net.optifine.shaders.Shaders.
     public static boolean optifineShaders() {
         if (!ofLooked) {
             ofLooked = true;
@@ -66,7 +65,6 @@ public final class Compat {
         }
     }
 
-    // OptiFine's depthtex0 (sky = 1), which survives the shader pack's final pass; 0 when unavailable.
     public static int optifineDepthTexture() {
         if (!ofDepthLooked) {
             ofDepthLooked = true;
@@ -114,7 +112,6 @@ public final class Compat {
         }
     }
 
-    // Iris keeps Distant Horizons' depth in its own texture; 0 when DH, Iris or a shader pack is absent.
     public static int dhDepthTexture() {
         if (!dhLooked) {
             dhLooked = true;
@@ -143,8 +140,6 @@ public final class Compat {
         }
     }
 
-    // Depth texture holding far terrain the main depth buffer is missing (DH or Voxy under an Iris shader pack); 0 when none.
-    // farSky() is the value that texture holds where there is no terrain; negative means the far end of the main depth range.
     public static int farDepthTexture() {
         int dh = dhDepthTexture();
         if (dh > 0) {
@@ -158,12 +153,10 @@ public final class Compat {
         return farSky;
     }
 
-    // Voxy under Iris renders LODs into its own framebuffer (vanilla terrain blitted in) unless the pack asks for vanilla depth.
     private static int voxyDepthTexture() {
         if (!voxyLooked) {
             voxyLooked = true;
             try {
-                // Voxy 0.2.20 names; 0.2.16 (1.21.11) has IGetVoxyRenderSystem and only a private data field.
                 Class<?> holder;
                 try {
                     holder = Class.forName("me.cortex.voxy.client.core.IVoxyRenderSystemHolder");
