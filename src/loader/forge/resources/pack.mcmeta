@@ -1,0 +1,6 @@
+{
+	"pack": {
+		"description": "Clear View resources",
+		"pack_format": ${pack_format}
+	}
+}

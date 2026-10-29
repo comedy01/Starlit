@@ -1,0 +1,20 @@
+{
+	"schemaVersion": 1,
+	"id": "starlit-selftest",
+	"version": "1.0.0",
+	"name": "Starlit self test",
+	"description": "Development-only in-world checks for Starlit. Not shipped.",
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"dev.starlit.selftest.fabric.StarlitSelfTestFabric"
+		]
+	},
+	"depends": {
+		"starlit": "*"
+	},
+	"mixins": [
+		"starlit_selftest.mixins.json"
+	]
+}

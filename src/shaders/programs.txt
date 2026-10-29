@@ -1,0 +1,16 @@
+milky_way dome milky_way false ADDITIVE
+end_sky dome end_sky false ADDITIVE
+aurora aurora aurora false ADDITIVE
+stars point star true ADDITIVE
+glow point glow true ADDITIVE
+lines point line true ADDITIVE
+galaxy point galaxy true ADDITIVE
+trail point trail true ADDITIVE
+comet point comet true ADDITIVE
+day_shade dome day_shade false MULTIPLY
+day_glow dome day_glow false ADDITIVE
+halo dome halo false ADDITIVE
+rainbow dome rainbow false PREMULTIPLIED
+bird point bird true TRANSLUCENT
+backdrop dome backdrop false TRANSLUCENT
+disc point disc true TRANSLUCENT

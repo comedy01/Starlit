@@ -1,0 +1,11 @@
+modLoader="javafml"
+loaderVersion="[1,)"
+license="MIT"
+
+[[mods]]
+modId="starlit_selftest"
+version="1.0.0"
+displayName="Starlit self test"
+
+[[mixins]]
+config="starlit_selftest.mixins.json"

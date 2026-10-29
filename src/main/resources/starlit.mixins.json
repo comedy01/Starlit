@@ -1,0 +1,16 @@
+{
+	"required": true,
+	"minVersion": "0.8",
+	"package": "dev.starlit.mixin",
+	"compatibilityLevel": "JAVA_${java_version}",
+	"client": [
+		"MinecraftMixin",
+		"OptiFineShadersMixin",
+		"OptiFineGameRendererMixin",
+		"SkyRendererMixin",
+		"LevelRendererOverlayMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
