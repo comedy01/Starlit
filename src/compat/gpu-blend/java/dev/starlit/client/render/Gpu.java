@@ -101,7 +101,6 @@ public final class Gpu {
         RenderSystem.backupProjectionMatrix();
         RenderSystem.setProjectionMatrix((GpuBufferSlice) saved[0], (ProjectionType) saved[1]);
         if (target.getDepthTextureView().texture() instanceof com.mojang.blaze3d.opengl.GlTexture gl) DhMask.apply(gl.glId(), 0.0f);
-        // Shader packs leave sky pixels at the cleared depth 1.0; pin every overlay fragment there so it only lands on sky.
         GL11.glDepthRange(1.0, 1.0);
         return target;
     }

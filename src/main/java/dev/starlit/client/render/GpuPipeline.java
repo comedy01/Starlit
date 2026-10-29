@@ -1,7 +1,6 @@
 package dev.starlit.client.render;
 
 public final class GpuPipeline {
-    // True while Starlit draws its sky on top of a shader pack's finished frame, depth-tested against the world.
     public static boolean overlay;
 
     public enum Blend {

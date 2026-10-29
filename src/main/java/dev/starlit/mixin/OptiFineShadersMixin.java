@@ -8,7 +8,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-// OptiFine shader packs clear color and depth in their final pass, so the deferred overlay is drawn after it.
 @Pseudo
 @Mixin(targets = "net.optifine.shaders.Shaders", remap = false)
 abstract class OptiFineShadersMixin {

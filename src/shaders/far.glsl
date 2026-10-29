@@ -1,4 +1,3 @@
-// Pushes a clip-space vertex onto the far plane so depth-tested sky overlays only touch sky pixels.
 vec4 starlitFar(vec4 c) {
     if (abs(ProjMat[2][3]) < 0.5) return c;
     float f = ProjMat[2][2] / ProjMat[2][3];

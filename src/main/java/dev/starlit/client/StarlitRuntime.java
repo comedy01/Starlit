@@ -103,12 +103,10 @@ public final class StarlitRuntime {
         wish(mc, config, now);
     }
 
-    // Overworld-type skies always; other mods' dimensions only when Modded Skies is on.
     public static boolean starlitSky(ClientLevel level, StarlitConfig config) {
         return SkyType.overworld(level) || (config.moddedSkies() && moddedDimension(level));
     }
 
-    // Dimension keys print as "ResourceKey[minecraft:dimension / ns:path]" on every supported version.
     public static boolean moddedDimension(ClientLevel level) {
         String key = String.valueOf(level.dimension());
         int slash = key.lastIndexOf(" / ");
